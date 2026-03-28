@@ -269,7 +269,7 @@ class ClaudeUsageApp(rumps.App):
             message=(
                 "Which browser are you logged into claude.ai with?\n\n"
                 "Type one of: brave, chrome, safari, firefox, arc, edge\n"
-                "(or 'auto' to try all)"
+                "'auto' to try all, or 'manual' to paste a session key"
             ),
             title="Claude Usage \u2014 Setup",
             default_text="brave",
@@ -285,11 +285,29 @@ class ClaudeUsageApp(rumps.App):
         choice = resp.text.strip().lower()
         # Try to match what they typed to a known browser
         known = {"brave": "brave", "chrome": "chrome", "safari": "safari",
-                 "firefox": "firefox", "arc": "arc", "edge": "edge", "auto": "auto"}
+                 "firefox": "firefox", "arc": "arc", "edge": "edge",
+                 "auto": "auto", "manual": "manual"}
         source = known.get(choice, "auto")
 
         self.cfg["cookie_source"] = source
         save_config(self.cfg)
+
+        # If manual, prompt for session key
+        if source == "manual":
+            key_resp = rumps.Window(
+                message="Paste your sessionKey cookie value:",
+                title="Manual Session Key",
+                default_text="sk-ant-sid01-...",
+                ok="Save",
+                cancel="Cancel",
+                dimensions=(400, 24),
+            ).run()
+            if key_resp.clicked and key_resp.text.strip():
+                self.cfg["session_key"] = key_resp.text.strip()
+                save_config(self.cfg)
+            else:
+                rumps.quit_application()
+                return
 
         # Update checkmarks in menu
         for key in self.cookie_menu:
@@ -314,17 +332,17 @@ class ClaudeUsageApp(rumps.App):
         for key in self.cookie_menu:
             self.cookie_menu[key].state = 1 if key == new_source else 0
 
-        # If switching to manual and no key set, prompt
-        if new_source == "manual" and not self.cfg.get("session_key"):
+        # If switching to manual, always prompt so user can update the key
+        if new_source == "manual":
             resp = rumps.Window(
                 message="Paste your sessionKey cookie value:",
                 title="Manual Session Key",
-                default_text="sk-ant-sid01-...",
+                default_text=self.cfg.get("session_key", "sk-ant-sid01-..."),
                 ok="Save",
                 cancel="Cancel",
                 dimensions=(400, 24),
             ).run()
-            if resp.clicked:
+            if resp.clicked and resp.text.strip():
                 self.cfg["session_key"] = resp.text.strip()
                 save_config(self.cfg)
 
