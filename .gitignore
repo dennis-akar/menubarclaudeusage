@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+
+# py2app
+*.app
+
+# macOS
+.DS_Store
+
+# Config (contains session keys)
+# Users should not commit their local config
+
+# Reference project
+claude-counter/

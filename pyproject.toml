@@ -1,0 +1,18 @@
+[project]
+name = "claude-menubar-usage"
+version = "0.1.0"
+description = "macOS menu bar app showing Claude.ai usage"
+requires-python = ">=3.11"
+dependencies = [
+    "rumps>=0.4.0",
+    "rookiepy>=0.5.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+build = [
+    "py2app>=0.28",
+]
+
+[project.scripts]
+claude-menubar = "claude_usage:main"
