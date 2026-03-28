@@ -11,6 +11,7 @@ from pathlib import Path
 
 import requests
 import rumps
+from AppKit import NSApplication, NSPasteboard
 
 # ---------------------------------------------------------------------------
 # Config
@@ -294,10 +295,14 @@ class ClaudeUsageApp(rumps.App):
 
         # If manual, prompt for session key
         if source == "manual":
+            default = self._get_session_key_default()
             key_resp = rumps.Window(
-                message="Paste your sessionKey cookie value:",
+                message=(
+                    "Paste your sessionKey cookie value.\n"
+                    "(Tip: copy it first — if it's on your clipboard, it will auto-fill below.)"
+                ),
                 title="Manual Session Key",
-                default_text="sk-ant-sid01-...",
+                default_text=default,
                 ok="Save",
                 cancel="Cancel",
                 dimensions=(400, 24),
@@ -314,6 +319,18 @@ class ClaudeUsageApp(rumps.App):
             self.cookie_menu[key].state = 1 if key == source else 0
 
         threading.Thread(target=self._initial_fetch, daemon=True).start()
+
+    def _get_session_key_default(self):
+        """Get a sensible default for the session key prompt: existing key, clipboard, or placeholder."""
+        existing = self.cfg.get("session_key", "")
+        if existing:
+            return existing
+        # Check clipboard for something that looks like a session key
+        pb = NSPasteboard.generalPasteboard()
+        clip = pb.stringForType_("public.utf8-plain-text") or ""
+        if clip.startswith("sk-ant-sid"):
+            return clip
+        return "sk-ant-sid01-..."
 
     # -- callbacks -----------------------------------------------------------
 
@@ -334,10 +351,15 @@ class ClaudeUsageApp(rumps.App):
 
         # If switching to manual, always prompt so user can update the key
         if new_source == "manual":
+            NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+            default = self._get_session_key_default()
             resp = rumps.Window(
-                message="Paste your sessionKey cookie value:",
+                message=(
+                    "Paste your sessionKey cookie value.\n"
+                    "(Tip: copy it first — if it's on your clipboard, it will auto-fill below.)"
+                ),
                 title="Manual Session Key",
-                default_text=self.cfg.get("session_key", "sk-ant-sid01-..."),
+                default_text=default,
                 ok="Save",
                 cancel="Cancel",
                 dimensions=(400, 24),
