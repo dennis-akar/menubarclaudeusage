@@ -20,7 +20,7 @@ CONFIG_DIR = Path.home() / ".config" / "claude-menubar"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 DEFAULT_CONFIG = {
-    "cookie_source": "brave",  # "auto", "brave", "safari", "chrome", "manual"
+    "cookie_source": "",  # set on first run; "auto", "brave", "safari", "chrome", "manual"
     "session_key": "",         # only used when cookie_source == "manual"
     "poll_interval_seconds": 60,
 }
@@ -253,7 +253,48 @@ class ClaudeUsageApp(rumps.App):
         self.timer = rumps.Timer(self.poll_usage, self.poll_interval)
         self.timer.start()
 
-        # Also do an immediate fetch in background
+        # First-run: prompt for browser, then fetch
+        if not self.cfg.get("cookie_source"):
+            # Delay slightly so the menu bar has time to appear
+            rumps.Timer(self._prompt_browser, 1).start()
+        else:
+            threading.Thread(target=self._initial_fetch, daemon=True).start()
+
+    # -- first-run -----------------------------------------------------------
+
+    def _prompt_browser(self, timer):
+        timer.stop()
+        browsers = ["Brave", "Chrome", "Safari", "Firefox", "Arc", "Edge"]
+        resp = rumps.Window(
+            message=(
+                "Which browser are you logged into claude.ai with?\n\n"
+                "Type one of: brave, chrome, safari, firefox, arc, edge\n"
+                "(or 'auto' to try all)"
+            ),
+            title="Claude Usage \u2014 Setup",
+            default_text="brave",
+            ok="OK",
+            cancel="Quit",
+            dimensions=(260, 24),
+        ).run()
+
+        if not resp.clicked:
+            rumps.quit_application()
+            return
+
+        choice = resp.text.strip().lower()
+        # Try to match what they typed to a known browser
+        known = {"brave": "brave", "chrome": "chrome", "safari": "safari",
+                 "firefox": "firefox", "arc": "arc", "edge": "edge", "auto": "auto"}
+        source = known.get(choice, "auto")
+
+        self.cfg["cookie_source"] = source
+        save_config(self.cfg)
+
+        # Update checkmarks in menu
+        for key in self.cookie_menu:
+            self.cookie_menu[key].state = 1 if key == source else 0
+
         threading.Thread(target=self._initial_fetch, daemon=True).start()
 
     # -- callbacks -----------------------------------------------------------
